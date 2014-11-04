@@ -17,12 +17,15 @@
 package com.android.launcher3;
 
 import android.app.backup.BackupAgentHelper;
+import android.app.backup.BackupDataInput;
 import android.app.backup.BackupManager;
-import android.app.backup.SharedPreferencesBackupHelper;
 import android.content.Context;
-import android.content.SharedPreferences;
+import android.database.Cursor;
+import android.os.ParcelFileDescriptor;
 import android.provider.Settings;
 import android.util.Log;
+
+import java.io.IOException;
 
 public class LauncherBackupAgentHelper extends BackupAgentHelper {
 
@@ -54,14 +57,14 @@ public class LauncherBackupAgentHelper extends BackupAgentHelper {
         // modifies the file outside the normal codepaths, so it looks like another
         // process.  This forces a reload of the file, in case this process persists.
         String spKey = LauncherAppState.getSharedPreferencesKey();
-        SharedPreferences sp = getSharedPreferences(spKey, Context.MODE_MULTI_PROCESS);
+        getSharedPreferences(spKey, Context.MODE_MULTI_PROCESS);
         super.onDestroy();
     }
 
     @Override
     public void onCreate() {
         boolean restoreEnabled = 0 != Settings.Secure.getInt(
-                getContentResolver(), SETTING_RESTORE_ENABLED, 0);
+                getContentResolver(), SETTING_RESTORE_ENABLED, 1);
         if (VERBOSE) Log.v(TAG, "restore is " + (restoreEnabled ? "enabled" : "disabled"));
 
         addHelper(LauncherBackupHelper.LAUNCHER_PREFS_PREFIX,
@@ -70,5 +73,22 @@ public class LauncherBackupAgentHelper extends BackupAgentHelper {
                         restoreEnabled));
         addHelper(LauncherBackupHelper.LAUNCHER_PREFIX,
                 new LauncherBackupHelper(this, restoreEnabled));
+    }
+
+    @Override
+    public void onRestore(BackupDataInput data, int appVersionCode, ParcelFileDescriptor newState)
+            throws IOException {
+        super.onRestore(data, appVersionCode, newState);
+
+        // If no favorite was migrated, clear the data and start fresh.
+        final Cursor c = getContentResolver().query(
+                LauncherSettings.Favorites.CONTENT_URI_NO_NOTIFICATION, null, null, null, null);
+        boolean hasData = c.moveToNext();
+        c.close();
+
+        if (!hasData) {
+            if (VERBOSE) Log.v(TAG, "Nothing was restored, clearing DB");
+            LauncherAppState.getLauncherProvider().createEmptyDB();
+        }
     }
 }

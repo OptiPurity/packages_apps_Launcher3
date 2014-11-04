@@ -24,6 +24,7 @@
     <string name="uid_name" msgid="7820867637514617527">"Aplicaciones básicas de Android"</string>
     <string name="folder_name" msgid="7371454440695724752"></string>
     <string name="activity_not_found" msgid="8071924732094499514">"No se instaló la aplicación."</string>
+    <string name="safemode_shortcut_error" msgid="9160126848219158407">"Aplicación descargada inhabilitada en modo seguro"</string>
     <string name="widgets_tab_label" msgid="2921133187116603919">"Widgets"</string>
     <string name="widget_adder" msgid="3201040140710381657">"Widgets"</string>
     <string name="toggle_weight_watcher" msgid="5645299835184636119">"Mostrar memoria"</string>
@@ -76,6 +77,7 @@
     <string name="permlab_write_settings" msgid="3574213698004620587">"escribir configuración y accesos directos de la pantalla principal"</string>
     <string name="permdesc_write_settings" msgid="5440712911516509985">"Permite que la aplicación cambie la configuración y los accesos directos de la pantalla principal."</string>
     <string name="gadget_error_text" msgid="6081085226050792095">"Problema al cargar el widget"</string>
+    <string name="gadget_setup_text" msgid="8274003207686040488">"Configuración"</string>
     <string name="uninstall_system_app_text" msgid="4172046090762920660">"Esta es una aplicación del sistema y no se puede desinstalar."</string>
     <string name="dream_name" msgid="1530253749244328964">"Lanzacohetes"</string>
     <string name="folder_hint_text" msgid="6617836969016293992">"Carpeta sin nombre"</string>
@@ -95,6 +97,9 @@
     <string name="migration_cling_use_default" msgid="2626475813981258626">"EMPEZAR DE CERO"</string>
     <string name="workspace_cling_title" msgid="5626202359865825661">"Organiza tu espacio"</string>
     <string name="workspace_cling_move_item" msgid="528201129978005352">"Mantén presionado el fondo para administrar el fondo de pantalla, los widgets y la configuración."</string>
+    <string name="workspace_cling_longpress_title" msgid="9173998993909018310">"Fondos, widgets y configuración"</string>
+    <string name="workspace_cling_longpress_description" msgid="4119994475505235248">"Mantén presionado el fondo para personalizarlo"</string>
+    <string name="workspace_cling_longpress_dismiss" msgid="368660286867640874">"ENTENDIDO"</string>
     <string name="folder_cling_title" msgid="3894908818693254164">"Aquí tienes una carpeta"</string>
     <string name="folder_cling_create_folder" msgid="6158215559475836131">"Para crear una carpeta como esta, mantén presionada una aplicación y luego muévela sobre otra."</string>
     <string name="cling_dismiss" msgid="8962359497601507581">"Aceptar"</string>
@@ -107,4 +112,14 @@
     <string name="widget_button_text" msgid="2880537293434387943">"Widgets"</string>
     <string name="wallpaper_button_text" msgid="8404103075899945851">"Fondos de pantalla"</string>
     <string name="settings_button_text" msgid="8119458837558863227">"Configuración"</string>
+    <string name="package_state_enqueued" msgid="6227252464303085641">"Pendiente"</string>
+    <string name="package_state_downloading" msgid="4088770468458724721">"Descargando"</string>
+    <string name="package_state_installing" msgid="7588193972189849870">"Instalando"</string>
+    <string name="package_state_unknown" msgid="7592128424511031410">"Desconocido"</string>
+    <string name="package_state_error" msgid="7672093962724223588">"No restaurado"</string>
+    <string name="abandoned_clean_all" msgid="5256770727689657618">"Eliminar todo"</string>
+    <string name="abandoned_clean_this" msgid="7610119707847920412">"Eliminar"</string>
+    <string name="abandoned_search" msgid="891119232568284442">"Buscar"</string>
+    <string name="abandoned_promises_title" msgid="7096178467971716750">"Esta aplicación no está instalada"</string>
+    <string name="abandoned_promise_explanation" msgid="3990027586878167529">"La aplicación para este ícono no está instalada. Puedes eliminar el ícono o buscar la aplicación e instarla manualmente."</string>
 </resources>

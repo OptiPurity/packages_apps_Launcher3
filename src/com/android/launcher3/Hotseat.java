@@ -165,17 +165,13 @@ public class Hotseat extends FrameLayout
             updateAppsButtonIcon();
 
             allAppsButton.setContentDescription(context.getString(R.string.all_apps_button_label));
+            allAppsButton.setOnKeyListener(new HotseatIconKeyEventListener());
             if (mLauncher != null) {
                 allAppsButton.setOnTouchListener(mLauncher.getHapticFeedbackTouchListener());
+                mLauncher.setAllAppsButton(allAppsButton);
+                allAppsButton.setOnClickListener(mLauncher);
+                allAppsButton.setOnFocusChangeListener(mLauncher.mFocusHandler);
             }
-            allAppsButton.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(android.view.View v) {
-                    if (mLauncher != null) {
-                        mLauncher.onClickAllAppsButton(v);
-                    }
-                }
-            });
 
             // Note: We do this to ensure that the hotseat is always laid out in the orientation of
             // the hotseat in order regardless of which orientation they were added
@@ -183,7 +179,7 @@ public class Hotseat extends FrameLayout
             int y = getCellYFromOrder(mAllAppsButtonRank);
             CellLayout.LayoutParams lp = new CellLayout.LayoutParams(x,y,1,1);
             lp.canReorder = false;
-            mContent.addViewToCellLayout(allAppsButton, -1, 0, lp, true);
+            mContent.addViewToCellLayout(allAppsButton, -1, allAppsButton.getId(), lp, true);
         }
     }
 
@@ -191,7 +187,7 @@ public class Hotseat extends FrameLayout
     public boolean onInterceptTouchEvent(MotionEvent ev) {
         // We don't want any clicks to go through to the hotseat unless the workspace is in
         // the normal state.
-        if (mLauncher.getWorkspace().isSmall()) {
+        if (mLauncher.getWorkspace().workspaceInModalState()) {
             return true;
         }
         return false;

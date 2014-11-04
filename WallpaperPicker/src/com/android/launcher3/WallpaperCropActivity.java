@@ -133,6 +133,14 @@ public class WallpaperCropActivity extends Activity {
         setCropViewTileSource(bitmapSource, true, false, onLoad);
     }
 
+    @Override
+    protected void onDestroy() {
+        if (mCropView != null) {
+            mCropView.destroy();
+        }
+        super.onDestroy();
+    }
+
     public void setCropViewTileSource(
             final BitmapRegionTileSource.BitmapSource bitmapSource, final boolean touchEnabled,
             final boolean moveToLeft, final Runnable postExecute) {
@@ -141,7 +149,21 @@ public class WallpaperCropActivity extends Activity {
         final AsyncTask<Void, Void, Void> loadBitmapTask = new AsyncTask<Void, Void, Void>() {
             protected Void doInBackground(Void...args) {
                 if (!isCancelled()) {
-                    bitmapSource.loadInBackground();
+                    try {
+                        bitmapSource.loadInBackground();
+                    } catch (SecurityException securityException) {
+                        if (isDestroyed()) {
+                            // Temporarily granted permissions are revoked when the activity
+                            // finishes, potentially resulting in a SecurityException here.
+                            // Even though {@link #isDestroyed} might also return true in different
+                            // situations where the configuration changes, we are fine with
+                            // catching these cases here as well.
+                            cancel(false);
+                        } else {
+                            // otherwise it had a different cause and we throw it further
+                            throw securityException;
+                        }
+                    }
                 }
                 return null;
             }
@@ -286,10 +308,10 @@ public class WallpaperCropActivity extends Activity {
         return 0;
     }
 
-    protected void setWallpaper(String filePath, final boolean finishActivityWhenDone) {
-        int rotation = getRotationFromExif(filePath);
+    protected void setWallpaper(Uri uri, final boolean finishActivityWhenDone) {
+        int rotation = getRotationFromExif(this, uri);
         BitmapCropTask cropTask = new BitmapCropTask(
-                this, filePath, null, rotation, 0, 0, true, false, null);
+                this, uri, null, rotation, 0, 0, true, false, null);
         final Point bounds = cropTask.getImageBounds();
         Runnable onEndCrop = new Runnable() {
             public void run() {
@@ -352,16 +374,27 @@ public class WallpaperCropActivity extends Activity {
                 getWindowManager());
         // Get the crop
         RectF cropRect = mCropView.getCrop();
+
+        Point inSize = mCropView.getSourceDimensions();
+
         int cropRotation = mCropView.getImageRotation();
         float cropScale = mCropView.getWidth() / (float) cropRect.width();
 
-        Point inSize = mCropView.getSourceDimensions();
+
         Matrix rotateMatrix = new Matrix();
         rotateMatrix.setRotate(cropRotation);
         float[] rotatedInSize = new float[] { inSize.x, inSize.y };
         rotateMatrix.mapPoints(rotatedInSize);
         rotatedInSize[0] = Math.abs(rotatedInSize[0]);
         rotatedInSize[1] = Math.abs(rotatedInSize[1]);
+
+
+        // due to rounding errors in the cropview renderer the edges can be slightly offset
+        // therefore we ensure that the boundaries are sanely defined
+        cropRect.left = Math.max(0, cropRect.left);
+        cropRect.right = Math.min(rotatedInSize[0], cropRect.right);
+        cropRect.top = Math.max(0, cropRect.top);
+        cropRect.bottom = Math.min(rotatedInSize[1], cropRect.bottom);
 
         // ADJUST CROP WIDTH
         // Extend the crop all the way to the right, for parallax
@@ -799,17 +832,28 @@ public class WallpaperCropActivity extends Activity {
         editor.commit();
 
         suggestWallpaperDimension(getResources(),
-                sp, getWindowManager(), WallpaperManager.getInstance(this));
+                sp, getWindowManager(), WallpaperManager.getInstance(this), true);
     }
 
     static public void suggestWallpaperDimension(Resources res,
             final SharedPreferences sharedPrefs,
             WindowManager windowManager,
-            final WallpaperManager wallpaperManager) {
+            final WallpaperManager wallpaperManager, boolean fallBackToDefaults) {
         final Point defaultWallpaperSize = getDefaultWallpaperSize(res, windowManager);
         // If we have saved a wallpaper width/height, use that instead
-        int savedWidth = sharedPrefs.getInt(WALLPAPER_WIDTH_KEY, defaultWallpaperSize.x);
-        int savedHeight = sharedPrefs.getInt(WALLPAPER_HEIGHT_KEY, defaultWallpaperSize.y);
+
+        int savedWidth = sharedPrefs.getInt(WALLPAPER_WIDTH_KEY, -1);
+        int savedHeight = sharedPrefs.getInt(WALLPAPER_HEIGHT_KEY, -1);
+
+        if (savedWidth == -1 || savedHeight == -1) {
+            if (!fallBackToDefaults) {
+                return;
+            } else {
+                savedWidth = defaultWallpaperSize.x;
+                savedHeight = defaultWallpaperSize.y;
+            }
+        }
+
         if (savedWidth != wallpaperManager.getDesiredMinimumWidth() ||
                 savedHeight != wallpaperManager.getDesiredMinimumHeight()) {
             wallpaperManager.suggestDesiredDimensions(savedWidth, savedHeight);

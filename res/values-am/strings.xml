@@ -24,6 +24,7 @@
     <string name="uid_name" msgid="7820867637514617527">"Android ዋና መተግበሪያዎች"</string>
     <string name="folder_name" msgid="7371454440695724752"></string>
     <string name="activity_not_found" msgid="8071924732094499514">"መተግበሪያ አልተጫነም።"</string>
+    <string name="safemode_shortcut_error" msgid="9160126848219158407">"የወረደው መተግበሪያ ደህንነቱ በተጠበቀ ሁኔታ ውስጥ ተሰናክሏል"</string>
     <string name="widgets_tab_label" msgid="2921133187116603919">"ፍርግሞች"</string>
     <string name="widget_adder" msgid="3201040140710381657">"ፍርግሞች"</string>
     <string name="toggle_weight_watcher" msgid="5645299835184636119">"ማህደረ ማስታወሻ አሳይ"</string>
@@ -35,7 +36,7 @@
     <string name="rename_folder_label" msgid="3727762225964550653">"አቃፊ ስም"</string>
     <string name="rename_folder_title" msgid="3771389277707820891">"አቃፊ ዳግም ሰይም"</string>
     <string name="rename_action" msgid="5559600076028658757">"እሺ"</string>
-    <string name="cancel_action" msgid="7009134900002915310">"ተው"</string>
+    <string name="cancel_action" msgid="7009134900002915310">"ይቅር"</string>
     <string name="menu_item_add_item" msgid="1264911265836810421">"ወደ መነሻ ማያ ገጽ ያክሉ"</string>
     <string name="group_applications" msgid="3797214114206693605">"መተግበሪያዎች"</string>
     <string name="group_shortcuts" msgid="6012256992764410535">"አቋራጮች"</string>
@@ -76,6 +77,7 @@
     <string name="permlab_write_settings" msgid="3574213698004620587">"የመነሻ ቅንብሮችን እና አቋራጮችን ይጽፋል"</string>
     <string name="permdesc_write_settings" msgid="5440712911516509985">"መተግብሪያው ቅንብሮችን እና አቋራጮችን በመነሻ ውስጥ እንዲቀይራቸው ያስችለዋል።"</string>
     <string name="gadget_error_text" msgid="6081085226050792095">"ፍርግም የመጫን ችግር"</string>
+    <string name="gadget_setup_text" msgid="8274003207686040488">"ማዋቀሪያ"</string>
     <string name="uninstall_system_app_text" msgid="4172046090762920660">"ይህ የስርዓት መተግበሪያ ነው እና ማራገፍ አይቻልም።"</string>
     <string name="dream_name" msgid="1530253749244328964">"የሮኬት ማስጀመሪያ"</string>
     <string name="folder_hint_text" msgid="6617836969016293992">"ስም-አልባ አቃፊ"</string>
@@ -94,7 +96,10 @@
     <string name="migration_cling_copy_apps" msgid="946331230090919440">"አዶዎችን ይቅዱ"</string>
     <string name="migration_cling_use_default" msgid="2626475813981258626">"እንደ አዲስ ይጀምሩ"</string>
     <string name="workspace_cling_title" msgid="5626202359865825661">"ቦታዎን ያደራጁ"</string>
-    <string name="workspace_cling_move_item" msgid="528201129978005352">"የግድግዳ ወረቀት፣ ምግብሮችን እና ቅንብሮችን ለማቀናበር ጀርባውን ይንኩ እና ይያዙት።"</string>
+    <string name="workspace_cling_move_item" msgid="528201129978005352">"ልጣፍ ፣ ምግብሮችን እና ቅንብሮችን ለማቀናበር ጀርባውን ይንኩ እና ይያዙት።"</string>
+    <string name="workspace_cling_longpress_title" msgid="9173998993909018310">"የግድግዳ ወረቀቶች፣ ንዑስ ፕሮግራሞች እና ቅንብሮች"</string>
+    <string name="workspace_cling_longpress_description" msgid="4119994475505235248">"ለማበጀት ጀርባውን ነክተው ይያዙት"</string>
+    <string name="workspace_cling_longpress_dismiss" msgid="368660286867640874">"ገባኝ"</string>
     <string name="folder_cling_title" msgid="3894908818693254164">"አንድ አቃፊ እነሆ"</string>
     <string name="folder_cling_create_folder" msgid="6158215559475836131">"አንድ እንደዚህ አይነት ለመፍጠር መተግበሪያውን ነክተው ይያዙት እና ወደ ሌላ ያንቀሳቅሱት።"</string>
     <string name="cling_dismiss" msgid="8962359497601507581">"እሺ"</string>
@@ -107,4 +112,14 @@
     <string name="widget_button_text" msgid="2880537293434387943">"ፍርግሞች"</string>
     <string name="wallpaper_button_text" msgid="8404103075899945851">"የግድግዳ ወረቀቶች"</string>
     <string name="settings_button_text" msgid="8119458837558863227">"ቅንብሮች"</string>
+    <string name="package_state_enqueued" msgid="6227252464303085641">"በመጠበቅ ላይ"</string>
+    <string name="package_state_downloading" msgid="4088770468458724721">"በማውረድ ላይ"</string>
+    <string name="package_state_installing" msgid="7588193972189849870">"በመጫን ላይ"</string>
+    <string name="package_state_unknown" msgid="7592128424511031410">"የማይታወቅ"</string>
+    <string name="package_state_error" msgid="7672093962724223588">"ወደነበረበት አልተመለሰም"</string>
+    <string name="abandoned_clean_all" msgid="5256770727689657618">"ሁሉንም አስወግድ"</string>
+    <string name="abandoned_clean_this" msgid="7610119707847920412">"አስወግድ"</string>
+    <string name="abandoned_search" msgid="891119232568284442">"ፈልግ"</string>
+    <string name="abandoned_promises_title" msgid="7096178467971716750">"ይህ መተግበሪያ አልተጫነም"</string>
+    <string name="abandoned_promise_explanation" msgid="3990027586878167529">"የዚህ አዶ መተግበሪያ አልተጫነም። ማስወገድ ወይም መተግበሪያውን መፈለግና ራስዎ መጫን ይችላሉ።"</string>
 </resources>

@@ -44,16 +44,18 @@ import java.util.Comparator;
 
 
 class DeviceProfileQuery {
+    DeviceProfile profile;
     float widthDps;
     float heightDps;
     float value;
     PointF dimens;
 
-    DeviceProfileQuery(float w, float h, float v) {
-        widthDps = w;
-        heightDps = h;
+    DeviceProfileQuery(DeviceProfile p, float v) {
+        widthDps = p.minWidthDps;
+        heightDps = p.minHeightDps;
         value = v;
-        dimens = new PointF(w, h);
+        dimens = new PointF(widthDps, heightDps);
+        profile = p;
     }
 }
 
@@ -68,10 +70,13 @@ public class DeviceProfile {
     float numRows;
     float numColumns;
     float numHotseatIcons;
-    private float iconSize;
+    float iconSize;
     private float iconTextSize;
     private int iconDrawablePaddingOriginalPx;
     private float hotseatIconSize;
+
+    int defaultLayoutId;
+    int defaultNoAllAppsLayoutId;
 
     boolean isLandscape;
     boolean isTablet;
@@ -123,13 +128,17 @@ public class DeviceProfile {
     int searchBarSpaceHeightPx;
     int searchBarHeightPx;
     int pageIndicatorHeightPx;
+    int allAppsButtonVisualSize;
 
     float dragViewScale;
+
+    int allAppsShortEdgeCount = -1;
+    int allAppsLongEdgeCount = -1;
 
     private ArrayList<DeviceProfileCallbacks> mCallbacks = new ArrayList<DeviceProfileCallbacks>();
 
     DeviceProfile(String n, float w, float h, float r, float c,
-                  float is, float its, float hs, float his) {
+                  float is, float its, float hs, float his, int dlId, int dnalId) {
         // Ensure that we have an odd number of hotseat items (since we need to place all apps)
         if (!LauncherAppState.isDisableAllApps() && hs % 2 == 0) {
             throw new RuntimeException("All Device Profiles must have an odd number of hotseat spaces");
@@ -144,6 +153,11 @@ public class DeviceProfile {
         iconTextSize = its;
         numHotseatIcons = hs;
         hotseatIconSize = his;
+        defaultLayoutId = dlId;
+        defaultNoAllAppsLayoutId = dnalId;
+    }
+
+    DeviceProfile() {
     }
 
     DeviceProfile(Context context,
@@ -184,38 +198,42 @@ public class DeviceProfile {
         overviewModeScaleFactor =
                 res.getInteger(R.integer.config_dynamic_grid_overview_scale_percentage) / 100f;
 
-        // Interpolate the rows
+        // Find the closes profile given the width/height
         for (DeviceProfile p : profiles) {
-            points.add(new DeviceProfileQuery(p.minWidthDps, p.minHeightDps, p.numRows));
+            points.add(new DeviceProfileQuery(p, 0f));
         }
-        numRows = Math.round(invDistWeightedInterpolate(minWidth, minHeight, points));
-        // Interpolate the columns
-        points.clear();
-        for (DeviceProfile p : profiles) {
-            points.add(new DeviceProfileQuery(p.minWidthDps, p.minHeightDps, p.numColumns));
-        }
-        numColumns = Math.round(invDistWeightedInterpolate(minWidth, minHeight, points));
-        // Interpolate the hotseat length
-        points.clear();
-        for (DeviceProfile p : profiles) {
-            points.add(new DeviceProfileQuery(p.minWidthDps, p.minHeightDps, p.numHotseatIcons));
-        }
-        numHotseatIcons = Math.round(invDistWeightedInterpolate(minWidth, minHeight, points));
+        DeviceProfile closestProfile = findClosestDeviceProfile(minWidth, minHeight, points);
+
+        // Snap to the closest row count
+        numRows = closestProfile.numRows;
+
+        // Snap to the closest column count
+        numColumns = closestProfile.numColumns;
+
+        // Snap to the closest hotseat size
+        numHotseatIcons = closestProfile.numHotseatIcons;
         hotseatAllAppsRank = (int) (numHotseatIcons / 2);
+
+        // Snap to the closest default layout id
+        defaultLayoutId = closestProfile.defaultLayoutId;
+
+        // Snap to the closest default no all-apps layout id
+        defaultNoAllAppsLayoutId = closestProfile.defaultNoAllAppsLayoutId;
 
         // Interpolate the icon size
         points.clear();
         for (DeviceProfile p : profiles) {
-            points.add(new DeviceProfileQuery(p.minWidthDps, p.minHeightDps, p.iconSize));
+            points.add(new DeviceProfileQuery(p, p.iconSize));
         }
         iconSize = invDistWeightedInterpolate(minWidth, minHeight, points);
+
         // AllApps uses the original non-scaled icon size
         allAppsIconSizePx = DynamicGrid.pxFromDp(iconSize, dm);
 
         // Interpolate the icon text size
         points.clear();
         for (DeviceProfile p : profiles) {
-            points.add(new DeviceProfileQuery(p.minWidthDps, p.minHeightDps, p.iconTextSize));
+            points.add(new DeviceProfileQuery(p, p.iconTextSize));
         }
         iconTextSize = invDistWeightedInterpolate(minWidth, minHeight, points);
         iconDrawablePaddingOriginalPx =
@@ -226,14 +244,56 @@ public class DeviceProfile {
         // Interpolate the hotseat icon size
         points.clear();
         for (DeviceProfile p : profiles) {
-            points.add(new DeviceProfileQuery(p.minWidthDps, p.minHeightDps, p.hotseatIconSize));
+            points.add(new DeviceProfileQuery(p, p.hotseatIconSize));
         }
         // Hotseat
         hotseatIconSize = invDistWeightedInterpolate(minWidth, minHeight, points);
 
+        // If the partner customization apk contains any grid overrides, apply them
+        applyPartnerDeviceProfileOverrides(context, dm);
+
         // Calculate the remaining vars
         updateFromConfiguration(context, res, wPx, hPx, awPx, ahPx);
         updateAvailableDimensions(context);
+        computeAllAppsButtonSize(context);
+    }
+
+    /**
+     * Apply any Partner customization grid overrides.
+     *
+     * Currently we support: all apps row / column count.
+     */
+    private void applyPartnerDeviceProfileOverrides(Context ctx, DisplayMetrics dm) {
+        Partner p = Partner.get(ctx.getPackageManager());
+        if (p != null) {
+            DeviceProfile partnerDp = p.getDeviceProfileOverride(dm);
+            if (partnerDp != null) {
+                if (partnerDp.numRows > 0 && partnerDp.numColumns > 0) {
+                    numRows = partnerDp.numRows;
+                    numColumns = partnerDp.numColumns;
+                }
+                if (partnerDp.allAppsShortEdgeCount > 0 && partnerDp.allAppsLongEdgeCount > 0) {
+                    allAppsShortEdgeCount = partnerDp.allAppsShortEdgeCount;
+                    allAppsLongEdgeCount = partnerDp.allAppsLongEdgeCount;
+                }
+                if (partnerDp.iconSize > 0) {
+                    iconSize = partnerDp.iconSize;
+                    // AllApps uses the original non-scaled icon size
+                    allAppsIconSizePx = DynamicGrid.pxFromDp(iconSize, dm);
+                }
+            }
+        }
+    }
+
+    /**
+     * Determine the exact visual footprint of the all apps button, taking into account scaling
+     * and internal padding of the drawable.
+     */
+    private void computeAllAppsButtonSize(Context context) {
+        Resources res = context.getResources();
+        float padding = res.getInteger(R.integer.config_allAppsButtonPaddingPercent) / 100f;
+        LauncherAppState app = LauncherAppState.getInstance();
+        allAppsButtonVisualSize = (int) (hotseatIconSizePx * (1 - padding));
     }
 
     void addCallback(DeviceProfileCallbacks cb) {
@@ -359,12 +419,17 @@ public class DeviceProfile {
         int maxRows = (isLandscape ? maxShortEdgeCellCount : maxLongEdgeCellCount);
         int maxCols = (isLandscape ? maxLongEdgeCellCount : maxShortEdgeCellCount);
 
-        allAppsNumRows = (availableHeightPx - pageIndicatorHeightPx) /
-                (allAppsCellHeightPx + allAppsCellPaddingPx);
-        allAppsNumRows = Math.max(minEdgeCellCount, Math.min(maxRows, allAppsNumRows));
-        allAppsNumCols = (availableWidthPx) /
-                (allAppsCellWidthPx + allAppsCellPaddingPx);
-        allAppsNumCols = Math.max(minEdgeCellCount, Math.min(maxCols, allAppsNumCols));
+        if (allAppsShortEdgeCount > 0 && allAppsLongEdgeCount > 0) {
+            allAppsNumRows = isLandscape ? allAppsShortEdgeCount : allAppsLongEdgeCount;
+            allAppsNumCols = isLandscape ? allAppsLongEdgeCount : allAppsShortEdgeCount;
+        } else {
+            allAppsNumRows = (availableHeightPx - pageIndicatorHeightPx) /
+                    (allAppsCellHeightPx + allAppsCellPaddingPx);
+            allAppsNumRows = Math.max(minEdgeCellCount, Math.min(maxRows, allAppsNumRows));
+            allAppsNumCols = (availableWidthPx) /
+                    (allAppsCellWidthPx + allAppsCellPaddingPx);
+            allAppsNumCols = Math.max(minEdgeCellCount, Math.min(maxCols, allAppsNumCols));
+        }
     }
 
     void updateFromConfiguration(Context context, Resources resources, int wPx, int hPx,
@@ -420,6 +485,28 @@ public class DeviceProfile {
         return (float) (1f / Math.pow(d, pow));
     }
 
+    /** Returns the closest device profile given the width and height and a list of profiles */
+    private DeviceProfile findClosestDeviceProfile(float width, float height,
+                                                   ArrayList<DeviceProfileQuery> points) {
+        return findClosestDeviceProfiles(width, height, points).get(0).profile;
+    }
+
+    /** Returns the closest device profiles ordered by closeness to the specified width and height */
+    private ArrayList<DeviceProfileQuery> findClosestDeviceProfiles(float width, float height,
+                                                   ArrayList<DeviceProfileQuery> points) {
+        final PointF xy = new PointF(width, height);
+
+        // Sort the profiles by their closeness to the dimensions
+        ArrayList<DeviceProfileQuery> pointsByNearness = points;
+        Collections.sort(pointsByNearness, new Comparator<DeviceProfileQuery>() {
+            public int compare(DeviceProfileQuery a, DeviceProfileQuery b) {
+                return (int) (dist(xy, a.dimens) - dist(xy, b.dimens));
+            }
+        });
+
+        return pointsByNearness;
+    }
+
     private float invDistWeightedInterpolate(float width, float height,
                 ArrayList<DeviceProfileQuery> points) {
         float sum = 0;
@@ -428,12 +515,8 @@ public class DeviceProfile {
         float kNearestNeighbors = 3;
         final PointF xy = new PointF(width, height);
 
-        ArrayList<DeviceProfileQuery> pointsByNearness = points;
-        Collections.sort(pointsByNearness, new Comparator<DeviceProfileQuery>() {
-            public int compare(DeviceProfileQuery a, DeviceProfileQuery b) {
-                return (int) (dist(xy, a.dimens) - dist(xy, b.dimens));
-            }
-        });
+        ArrayList<DeviceProfileQuery> pointsByNearness = findClosestDeviceProfiles(width, height,
+                points);
 
         for (int i = 0; i < pointsByNearness.size(); ++i) {
             DeviceProfileQuery p = pointsByNearness.get(i);
@@ -761,15 +844,19 @@ public class DeviceProfile {
                     (allAppsIconSizePx / DynamicGrid.DEFAULT_ICON_SIZE_PX)));
             pageIndicator = host.findViewById(R.id.apps_customize_page_indicator);
             if (pageIndicator != null) {
-                lp = (FrameLayout.LayoutParams) pageIndicator.getLayoutParams();
-                lp.gravity = Gravity.CENTER_HORIZONTAL | Gravity.BOTTOM;
-                lp.width = LayoutParams.WRAP_CONTENT;
-                lp.height = pageIndicatorHeight;
-                pageIndicator.setLayoutParams(lp);
+                LinearLayout.LayoutParams lllp = (LinearLayout.LayoutParams) pageIndicator.getLayoutParams();
+                lllp.width = LayoutParams.WRAP_CONTENT;
+                lllp.height = pageIndicatorHeight;
+                pageIndicator.setLayoutParams(lllp);
             }
 
             AppsCustomizePagedView pagedView = (AppsCustomizePagedView)
                     host.findViewById(R.id.apps_customize_pane_content);
+
+            FrameLayout fakePageContainer = (FrameLayout)
+                    host.findViewById(R.id.fake_page_container);
+            FrameLayout fakePage = (FrameLayout) host.findViewById(R.id.fake_page);
+
             padding = new Rect();
             if (pagedView != null) {
                 // Constrain the dimensions of all apps so that it does not span the full width
@@ -785,11 +872,24 @@ public class DeviceProfile {
                 if ((isTablet() || isLandscape) && gridPaddingLR > (allAppsCellWidthPx / 4)) {
                     padding.left = padding.right = gridPaddingLR;
                 }
+
                 // The icons are centered, so we can't just offset by the page indicator height
                 // because the empty space will actually be pageIndicatorHeight + paddingTB
                 padding.bottom = Math.max(0, pageIndicatorHeight - paddingTB);
-                pagedView.setAllAppsPadding(padding);
+
                 pagedView.setWidgetsPageIndicatorPadding(pageIndicatorHeight);
+                fakePage.setBackground(res.getDrawable(R.drawable.quantum_panel));
+
+                // Horizontal padding for the whole paged view
+                int pagedFixedViewPadding =
+                        res.getDimensionPixelSize(R.dimen.apps_customize_horizontal_padding);
+
+                padding.left += pagedFixedViewPadding;
+                padding.right += pagedFixedViewPadding;
+
+                pagedView.setPadding(padding.left, padding.top, padding.right, padding.bottom);
+                fakePageContainer.setPadding(padding.left, padding.top, padding.right, padding.bottom);
+
             }
         }
 

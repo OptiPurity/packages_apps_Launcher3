@@ -24,6 +24,7 @@
     <string name="uid_name" msgid="7820867637514617527">"Aplicacions principals d\'Android"</string>
     <string name="folder_name" msgid="7371454440695724752"></string>
     <string name="activity_not_found" msgid="8071924732094499514">"L\'aplicació no s\'ha instal·lat."</string>
+    <string name="safemode_shortcut_error" msgid="9160126848219158407">"L\'aplicació que has baixat està desactivada al mode segur."</string>
     <string name="widgets_tab_label" msgid="2921133187116603919">"Widgets"</string>
     <string name="widget_adder" msgid="3201040140710381657">"Widgets"</string>
     <string name="toggle_weight_watcher" msgid="5645299835184636119">"Mostra la memòria"</string>
@@ -76,6 +77,7 @@
     <string name="permlab_write_settings" msgid="3574213698004620587">"escriu la configuració i les dreceres de la pantalla d\'inici"</string>
     <string name="permdesc_write_settings" msgid="5440712911516509985">"Permet que l\'aplicació canviï la configuració i les dreceres de la pantalla d\'inici."</string>
     <string name="gadget_error_text" msgid="6081085226050792095">"S\'ha produït un problema en carregar el widget"</string>
+    <string name="gadget_setup_text" msgid="8274003207686040488">"Configuració"</string>
     <string name="uninstall_system_app_text" msgid="4172046090762920660">"Aquesta aplicació és una aplicació del sistema i no es pot desinstal·lar."</string>
     <string name="dream_name" msgid="1530253749244328964">"Rocket Launcher"</string>
     <string name="folder_hint_text" msgid="6617836969016293992">"Carpeta sense nom"</string>
@@ -95,6 +97,9 @@
     <string name="migration_cling_use_default" msgid="2626475813981258626">"NOU COMENÇAMENT"</string>
     <string name="workspace_cling_title" msgid="5626202359865825661">"Organitza el teu espai"</string>
     <string name="workspace_cling_move_item" msgid="528201129978005352">"Toca i mantén premut el fons per gestionar el fons de pantalla, els widgets i la configuració."</string>
+    <string name="workspace_cling_longpress_title" msgid="9173998993909018310">"Fons de pantalla, widgets i configuració"</string>
+    <string name="workspace_cling_longpress_description" msgid="4119994475505235248">"Mantén premut el fons per fer personalitzacions."</string>
+    <string name="workspace_cling_longpress_dismiss" msgid="368660286867640874">"D\'ACORD"</string>
     <string name="folder_cling_title" msgid="3894908818693254164">"Aquí hi ha una carpeta"</string>
     <string name="folder_cling_create_folder" msgid="6158215559475836131">"Per crear-ne una com aquesta, mantén premuda una aplicació i, a continuació, mou-la sobre una altra."</string>
     <string name="cling_dismiss" msgid="8962359497601507581">"D\'acord"</string>
@@ -107,4 +112,14 @@
     <string name="widget_button_text" msgid="2880537293434387943">"Widgets"</string>
     <string name="wallpaper_button_text" msgid="8404103075899945851">"Fons de pantalla"</string>
     <string name="settings_button_text" msgid="8119458837558863227">"Configuració"</string>
+    <string name="package_state_enqueued" msgid="6227252464303085641">"En espera"</string>
+    <string name="package_state_downloading" msgid="4088770468458724721">"S\'està baixant"</string>
+    <string name="package_state_installing" msgid="7588193972189849870">"Instal·lant"</string>
+    <string name="package_state_unknown" msgid="7592128424511031410">"Desconegut"</string>
+    <string name="package_state_error" msgid="7672093962724223588">"No restaurat"</string>
+    <string name="abandoned_clean_all" msgid="5256770727689657618">"Suprimeix-ho tot"</string>
+    <string name="abandoned_clean_this" msgid="7610119707847920412">"Suprimeix"</string>
+    <string name="abandoned_search" msgid="891119232568284442">"Cerca"</string>
+    <string name="abandoned_promises_title" msgid="7096178467971716750">"Aquesta aplicació no està instal·lada"</string>
+    <string name="abandoned_promise_explanation" msgid="3990027586878167529">"L\'aplicació d\'aquesta icona no està instal·lada. Pots suprimir-la o cercar l\'aplicació i instal·lar-la manualment."</string>
 </resources>

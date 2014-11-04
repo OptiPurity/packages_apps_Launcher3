@@ -73,7 +73,21 @@ public class DragLayer extends FrameLayout implements ViewGroup.OnHierarchyChang
 
     private final Rect mInsets = new Rect();
 
-    private int mDragViewIndex;
+    private View mOverlayView;
+    private int mTopViewIndex;
+    private int mChildCountOnLastUpdate = -1;
+
+    // Darkening scrim
+    private Drawable mBackground;
+    private float mBackgroundAlpha = 0;
+
+    // Related to adjacent page hints
+    private boolean mInScrollArea;
+    private boolean mShowPageHints;
+    private Drawable mLeftHoverDrawable;
+    private Drawable mRightHoverDrawable;
+    private Drawable mLeftHoverDrawableActive;
+    private Drawable mRightHoverDrawableActive;
 
     /**
      * Used to create a new DragLayer from XML.
@@ -89,8 +103,12 @@ public class DragLayer extends FrameLayout implements ViewGroup.OnHierarchyChang
         setChildrenDrawingOrderEnabled(true);
         setOnHierarchyChangeListener(this);
 
-        mLeftHoverDrawable = getResources().getDrawable(R.drawable.page_hover_left_holo);
-        mRightHoverDrawable = getResources().getDrawable(R.drawable.page_hover_right_holo);
+        final Resources res = getResources();
+        mLeftHoverDrawable = res.getDrawable(R.drawable.page_hover_left);
+        mRightHoverDrawable = res.getDrawable(R.drawable.page_hover_right);
+        mLeftHoverDrawableActive = res.getDrawable(R.drawable.page_hover_left_active);
+        mRightHoverDrawableActive = res.getDrawable(R.drawable.page_hover_right_active);
+        mBackground = res.getDrawable(R.drawable.apps_customize_bg);
     }
 
     public void setup(Launcher launcher, DragController controller) {
@@ -114,10 +132,28 @@ public class DragLayer extends FrameLayout implements ViewGroup.OnHierarchyChang
         return true; // I'll take it from here
     }
 
+    Rect getInsets() {
+        return mInsets;
+    }
+
     @Override
     public void addView(View child, int index, android.view.ViewGroup.LayoutParams params) {
         super.addView(child, index, params);
         setInsets(child, mInsets, new Rect());
+    }
+
+    public void showOverlayView(View overlayView) {
+        LayoutParams lp = new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT);
+        mOverlayView = overlayView;
+        addView(overlayView, lp);
+
+        // ensure that the overlay view stays on top. we can't use drawing order for this
+        // because in API level 16 touch dispatch doesn't respect drawing order.
+        mOverlayView.bringToFront();
+    }
+
+    public void dismissOverlayView() {
+        removeView(mOverlayView);
     }
 
     private void setInsets(View child, Rect newInsets, Rect oldInsets) {
@@ -168,8 +204,7 @@ public class DragLayer extends FrameLayout implements ViewGroup.OnHierarchyChang
         }
 
         Folder currentFolder = mLauncher.getWorkspace().getOpenFolder();
-        if (currentFolder != null && !mLauncher.getLauncherClings().isFolderClingVisible() &&
-                intercept) {
+        if (currentFolder != null && intercept) {
             if (currentFolder.isEditingName()) {
                 if (!isEventOverFolderTextRegion(currentFolder, ev)) {
                     currentFolder.dismissEditingName();
@@ -544,6 +579,10 @@ public class DragLayer extends FrameLayout implements ViewGroup.OnHierarchyChang
             // the drag view about the scaled child view.
             toY += Math.round(toScale * tv.getPaddingTop());
             toY -= dragView.getMeasuredHeight() * (1 - toScale) / 2;
+            if (dragView.getDragVisualizeOffset() != null) {
+                toY -=  Math.round(toScale * dragView.getDragVisualizeOffset().y);
+            }
+
             toX -= (dragView.getMeasuredWidth() - Math.round(scale * child.getMeasuredWidth())) / 2;
         } else if (child instanceof FolderIcon) {
             // Account for holographic blur padding on the drag view
@@ -762,6 +801,11 @@ public class DragLayer extends FrameLayout implements ViewGroup.OnHierarchyChang
 
     @Override
     public void onChildViewAdded(View parent, View child) {
+        if (mOverlayView != null) {
+            // ensure that the overlay view stays on top. we can't use drawing order for this
+            // because in API level 16 touch dispatch doesn't respect drawing order.
+            mOverlayView.bringToFront();
+        }
         updateChildIndices();
     }
 
@@ -770,33 +814,53 @@ public class DragLayer extends FrameLayout implements ViewGroup.OnHierarchyChang
         updateChildIndices();
     }
 
+    @Override
+    public void bringChildToFront(View child) {
+        super.bringChildToFront(child);
+        if (child != mOverlayView && mOverlayView != null) {
+            // ensure that the overlay view stays on top. we can't use drawing order for this
+            // because in API level 16 touch dispatch doesn't respect drawing order.
+            mOverlayView.bringToFront();
+        }
+        updateChildIndices();
+    }
+
     private void updateChildIndices() {
-        mDragViewIndex = -1;
+        mTopViewIndex = -1;
         int childCount = getChildCount();
         for (int i = 0; i < childCount; i++) {
             if (getChildAt(i) instanceof DragView) {
-                mDragViewIndex = i;
+                mTopViewIndex = i;
             }
         }
+        mChildCountOnLastUpdate = childCount;
     }
 
     @Override
     protected int getChildDrawingOrder(int childCount, int i) {
-        if (mDragViewIndex == -1) {
+        if (mChildCountOnLastUpdate != childCount) {
+            // between platform versions 17 and 18, behavior for onChildViewRemoved / Added changed.
+            // Pre-18, the child was not added / removed by the time of those callbacks. We need to
+            // force update our representation of things here to avoid crashing on pre-18 devices
+            // in certain instances.
+            updateChildIndices();
+        }
+
+        // i represents the current draw iteration
+        if (mTopViewIndex == -1) {
+            // in general we do nothing
             return i;
-        } else if (i == mDragViewIndex) {
-            return getChildCount()-1;
-        } else if (i < mDragViewIndex) {
+        } else if (i == childCount - 1) {
+            // if we have a top index, we return it when drawing last item (highest z-order)
+            return mTopViewIndex;
+        } else if (i < mTopViewIndex) {
             return i;
         } else {
-            // i > mDragViewIndex
-            return i-1;
+            // for indexes greater than the top index, we fetch one item above to shift for the
+            // displacement of the top index
+            return i + 1;
         }
     }
-
-    private boolean mInScrollArea;
-    private Drawable mLeftHoverDrawable;
-    private Drawable mRightHoverDrawable;
 
     void onEnterScrollArea(int direction) {
         mInScrollArea = true;
@@ -805,6 +869,16 @@ public class DragLayer extends FrameLayout implements ViewGroup.OnHierarchyChang
 
     void onExitScrollArea() {
         mInScrollArea = false;
+        invalidate();
+    }
+
+    void showPageHints() {
+        mShowPageHints = true;
+        invalidate();
+    }
+
+    void hidePageHints() {
+        mShowPageHints = false;
         invalidate();
     }
 
@@ -817,29 +891,66 @@ public class DragLayer extends FrameLayout implements ViewGroup.OnHierarchyChang
 
     @Override
     protected void dispatchDraw(Canvas canvas) {
-        super.dispatchDraw(canvas);
+        // Draw the background gradient below children.
+        if (mBackground != null && mBackgroundAlpha > 0.0f) {
+            int alpha = (int) (mBackgroundAlpha * 255);
+            mBackground.setAlpha(alpha);
+            mBackground.setBounds(0, 0, getMeasuredWidth(), getMeasuredHeight());
+            mBackground.draw(canvas);
+        }
 
-        if (mInScrollArea && !LauncherAppState.getInstance().isScreenLarge()) {
+        super.dispatchDraw(canvas);
+    }
+
+    private void drawPageHints(Canvas canvas) {
+        if (mShowPageHints) {
             Workspace workspace = mLauncher.getWorkspace();
             int width = getMeasuredWidth();
             Rect childRect = new Rect();
-            getDescendantRectRelativeToSelf(workspace.getChildAt(0), childRect);
+            getDescendantRectRelativeToSelf(workspace.getChildAt(workspace.getChildCount() - 1),
+                    childRect);
 
             int page = workspace.getNextPage();
             final boolean isRtl = isLayoutRtl();
             CellLayout leftPage = (CellLayout) workspace.getChildAt(isRtl ? page + 1 : page - 1);
             CellLayout rightPage = (CellLayout) workspace.getChildAt(isRtl ? page - 1 : page + 1);
 
-            if (leftPage != null && leftPage.getIsDragOverlapping()) {
-                mLeftHoverDrawable.setBounds(0, childRect.top,
-                        mLeftHoverDrawable.getIntrinsicWidth(), childRect.bottom);
-                mLeftHoverDrawable.draw(canvas);
-            } else if (rightPage != null && rightPage.getIsDragOverlapping()) {
-                mRightHoverDrawable.setBounds(width - mRightHoverDrawable.getIntrinsicWidth(),
+            if (leftPage != null && leftPage.isDragTarget()) {
+                Drawable left = mInScrollArea && leftPage.getIsDragOverlapping() ?
+                        mLeftHoverDrawableActive : mLeftHoverDrawable;
+                left.setBounds(0, childRect.top,
+                        left.getIntrinsicWidth(), childRect.bottom);
+                left.draw(canvas);
+            }
+            if (rightPage != null && rightPage.isDragTarget()) {
+                Drawable right = mInScrollArea && rightPage.getIsDragOverlapping() ?
+                        mRightHoverDrawableActive : mRightHoverDrawable;
+                right.setBounds(width - right.getIntrinsicWidth(),
                         childRect.top, width, childRect.bottom);
-                mRightHoverDrawable.draw(canvas);
+                right.draw(canvas);
             }
         }
+    }
+
+    protected boolean drawChild(Canvas canvas, View child, long drawingTime) {
+        boolean ret = super.drawChild(canvas, child, drawingTime);
+
+        // We want to draw the page hints above the workspace, but below the drag view.
+        if (child instanceof Workspace) {
+            drawPageHints(canvas);
+        }
+        return ret;
+    }
+
+    public void setBackgroundAlpha(float alpha) {
+        if (alpha != mBackgroundAlpha) {
+            mBackgroundAlpha = alpha;
+            invalidate();
+        }
+    }
+
+    public float getBackgroundAlpha() {
+        return mBackgroundAlpha;
     }
 
     public void setTouchCompleteListener(TouchCompleteListener listener) {

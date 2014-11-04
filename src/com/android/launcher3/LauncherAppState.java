@@ -31,11 +31,17 @@ import android.os.Handler;
 import android.preference.PreferenceManager;
 import android.util.Log;
 
+import com.android.launcher3.compat.LauncherAppsCompat;
+import com.android.launcher3.compat.PackageInstallerCompat.PackageInstallInfo;
+
 import java.lang.ref.WeakReference;
+import java.util.ArrayList;
 
 public class LauncherAppState implements DeviceProfile.DeviceProfileCallbacks {
     private static final String TAG = "LauncherAppState";
     private static final String SHARED_PREFERENCES_KEY = "com.android.launcher3.prefs";
+
+    private static final boolean DEBUG = false;
 
     private final AppFilter mAppFilter;
     private final BuildInfo mBuildInfo;
@@ -97,16 +103,11 @@ public class LauncherAppState implements DeviceProfile.DeviceProfileCallbacks {
         mAppFilter = AppFilter.loadByName(sContext.getString(R.string.app_filter_class));
         mBuildInfo = BuildInfo.loadByName(sContext.getString(R.string.build_info_class));
         mModel = new LauncherModel(this, mIconCache, mAppFilter);
+        final LauncherAppsCompat launcherApps = LauncherAppsCompat.getInstance(sContext);
+        launcherApps.addOnAppsChangedCallback(mModel);
 
         // Register intent receivers
-        IntentFilter filter = new IntentFilter(Intent.ACTION_PACKAGE_ADDED);
-        filter.addAction(Intent.ACTION_PACKAGE_REMOVED);
-        filter.addAction(Intent.ACTION_PACKAGE_CHANGED);
-        filter.addDataScheme("package");
-        sContext.registerReceiver(mModel, filter);
-        filter = new IntentFilter();
-        filter.addAction(Intent.ACTION_EXTERNAL_APPLICATIONS_AVAILABLE);
-        filter.addAction(Intent.ACTION_EXTERNAL_APPLICATIONS_UNAVAILABLE);
+        IntentFilter filter = new IntentFilter();
         filter.addAction(Intent.ACTION_LOCALE_CHANGED);
         filter.addAction(Intent.ACTION_CONFIGURATION_CHANGED);
         sContext.registerReceiver(mModel, filter);
@@ -125,7 +126,7 @@ public class LauncherAppState implements DeviceProfile.DeviceProfileCallbacks {
         PreferenceManager.getDefaultSharedPreferences(sContext)
                 .registerOnSharedPreferenceChangeListener(mSharedPreferencesObserver);
     }
-    
+
     public void recreateWidgetPreviewDb() {
         if (mWidgetPreviewCacheDb != null) {
             mWidgetPreviewCacheDb.close();
@@ -140,6 +141,9 @@ public class LauncherAppState implements DeviceProfile.DeviceProfileCallbacks {
         sContext.unregisterReceiver(mModel);
         PreferenceManager.getDefaultSharedPreferences(sContext)
                 .unregisterOnSharedPreferenceChangeListener(mSharedPreferencesObserver);
+
+        final LauncherAppsCompat launcherApps = LauncherAppsCompat.getInstance(sContext);
+        launcherApps.removeOnAppsChangedCallback(mModel);
 
         ContentResolver resolver = sContext.getContentResolver();
         resolver.unregisterContentObserver(mFavoritesObserver);
@@ -180,7 +184,7 @@ public class LauncherAppState implements DeviceProfile.DeviceProfileCallbacks {
         return mModel;
     }
 
-    IconCache getIconCache() {
+    public IconCache getIconCache() {
         return mIconCache;
     }
 
@@ -276,5 +280,16 @@ public class LauncherAppState implements DeviceProfile.DeviceProfileCallbacks {
 
     public static boolean isDogfoodBuild() {
         return getInstance().mBuildInfo.isDogfoodBuild();
+    }
+
+    public void setPackageState(ArrayList<PackageInstallInfo> installInfo) {
+        mModel.setPackageState(installInfo);
+    }
+
+    /**
+     * Updates the icons and label of all icons for the provided package name.
+     */
+    public void updatePackageBadge(String packageName) {
+        mModel.updatePackageBadge(packageName);
     }
 }

@@ -28,6 +28,8 @@ import com.android.launcher3.backup.BackupProtos.Key;
 import com.android.launcher3.backup.BackupProtos.Resource;
 import com.android.launcher3.backup.BackupProtos.Screen;
 import com.android.launcher3.backup.BackupProtos.Widget;
+import com.android.launcher3.compat.UserManagerCompat;
+import com.android.launcher3.compat.UserHandleCompat;
 
 import android.app.backup.BackupDataInputStream;
 import android.app.backup.BackupDataOutput;
@@ -108,6 +110,7 @@ public class LauncherBackupHelper implements BackupHelper {
             Favorites.SPANX,                   // 14
             Favorites.SPANY,                   // 15
             Favorites.TITLE,                   // 16
+            Favorites.PROFILE_ID,              // 17
     };
 
     private static final int ID_INDEX = 0;
@@ -127,6 +130,7 @@ public class LauncherBackupHelper implements BackupHelper {
     private static final int SPANX_INDEX = 14;
     private static final int SPANY_INDEX = 15;
     private static final int TITLE_INDEX = 16;
+    private static final int PROFILE_ID_INDEX = 17;
 
     private static final String[] SCREEN_PROJECTION = {
             WorkspaceScreens._ID,              // 0
@@ -144,11 +148,12 @@ public class LauncherBackupHelper implements BackupHelper {
 
     private HashMap<ComponentName, AppWidgetProviderInfo> mWidgetMap;
 
-    private ArrayList<Key> mKeys;
+    private final ArrayList<Key> mKeys;
 
     public LauncherBackupHelper(Context context, boolean restoreEnabled) {
         mContext = context;
         mRestoreEnabled = restoreEnabled;
+        mKeys = new ArrayList<Key>();
     }
 
     private void dataChanged() {
@@ -214,9 +219,6 @@ public class LauncherBackupHelper implements BackupHelper {
     @Override
     public void restoreEntity(BackupDataInputStream data) {
         if (VERBOSE) Log.v(TAG, "restoreEntity");
-        if (mKeys == null) {
-            mKeys = new ArrayList<Key>();
-        }
         byte[] buffer = new byte[512];
             String backupKey = data.getKey();
             int dataSize = data.size();
@@ -297,8 +299,9 @@ public class LauncherBackupHelper implements BackupHelper {
 
         // persist things that have changed since the last backup
         ContentResolver cr = mContext.getContentResolver();
+        // Don't backup apps in other profiles for now.
         Cursor cursor = cr.query(Favorites.CONTENT_URI, FAVORITE_PROJECTION,
-                null, null, null);
+                getUserSelectionArg(), null, null);
         Set<String> currentIds = new HashSet<String>(cursor.getCount());
         try {
             cursor.moveToPosition(-1);
@@ -349,7 +352,7 @@ public class LauncherBackupHelper implements BackupHelper {
         try {
             ContentResolver cr = mContext.getContentResolver();
             ContentValues values = unpackFavorite(buffer, 0, dataSize);
-            cr.insert(Favorites.CONTENT_URI, values);
+            cr.insert(Favorites.CONTENT_URI_NO_NOTIFICATION, values);
         } catch (InvalidProtocolBufferNanoException e) {
             Log.e(TAG, "failed to decode favorite", e);
         }
@@ -454,14 +457,19 @@ public class LauncherBackupHelper implements BackupHelper {
         }
         final ContentResolver cr = mContext.getContentResolver();
         final int dpi = mContext.getResources().getDisplayMetrics().densityDpi;
+        final UserHandleCompat myUserHandle = UserHandleCompat.myUserHandle();
 
         // read the old ID set
         Set<String> savedIds = getSavedIdsByType(Key.ICON, in);
         if (DEBUG) Log.d(TAG, "icon savedIds.size()=" + savedIds.size());
 
+        // Don't backup apps in other profiles for now.
         int startRows = out.rows;
         if (DEBUG) Log.d(TAG, "starting here: " + startRows);
-        String where = Favorites.ITEM_TYPE + "=" + Favorites.ITEM_TYPE_APPLICATION;
+
+        String where = "(" + Favorites.ITEM_TYPE + "=" + Favorites.ITEM_TYPE_APPLICATION + " OR " +
+                Favorites.ITEM_TYPE + "=" + Favorites.ITEM_TYPE_SHORTCUT + ") AND " +
+                getUserSelectionArg();
         Cursor cursor = cr.query(Favorites.CONTENT_URI, FAVORITE_PROJECTION,
                 where, null, null);
         Set<String> currentIds = new HashSet<String>(cursor.getCount());
@@ -491,9 +499,9 @@ public class LauncherBackupHelper implements BackupHelper {
                         if (DEBUG) Log.d(TAG, "I can count this high: " + out.rows);
                         if ((out.rows - startRows) < MAX_ICONS_PER_PASS) {
                             if (VERBOSE) Log.v(TAG, "saving icon " + backupKey);
-                            Bitmap icon = mIconCache.getIcon(intent);
+                            Bitmap icon = mIconCache.getIcon(intent, myUserHandle);
                             keys.add(key);
-                            if (icon != null && !mIconCache.isDefaultIcon(icon)) {
+                            if (icon != null && !mIconCache.isDefaultIcon(icon, myUserHandle)) {
                                 byte[] blob = packIcon(dpi, icon);
                                 writeRowToBackup(key, blob, out, data);
                             }
@@ -556,6 +564,7 @@ public class LauncherBackupHelper implements BackupHelper {
                 }
                 return;
             } else {
+                if (VERBOSE) Log.v(TAG, "saving restored icon as: " + key.name);
                 IconCache.preloadIcon(mContext, ComponentName.unflattenFromString(key.name),
                         icon, res.dpi);
             }
@@ -595,7 +604,8 @@ public class LauncherBackupHelper implements BackupHelper {
 
         int startRows = out.rows;
         if (DEBUG) Log.d(TAG, "starting here: " + startRows);
-        String where = Favorites.ITEM_TYPE + "=" + Favorites.ITEM_TYPE_APPWIDGET;
+        String where = Favorites.ITEM_TYPE + "=" + Favorites.ITEM_TYPE_APPWIDGET + " AND "
+                + getUserSelectionArg();
         Cursor cursor = cr.query(Favorites.CONTENT_URI, FAVORITE_PROJECTION,
                 where, null, null);
         Set<String> currentIds = new HashSet<String>(cursor.getCount());
@@ -670,6 +680,9 @@ public class LauncherBackupHelper implements BackupHelper {
                         .decodeByteArray(widget.icon.data, 0, widget.icon.data.length);
                 if (icon == null) {
                     Log.w(TAG, "failed to unpack widget icon for " + key.name);
+                } else {
+                    IconCache.preloadIcon(mContext, ComponentName.unflattenFromString(widget.provider),
+                            icon, widget.icon.dpi);
                 }
             }
 
@@ -798,9 +811,15 @@ public class LauncherBackupHelper implements BackupHelper {
         if (!TextUtils.isEmpty(title)) {
             favorite.title = title;
         }
-        String intent = c.getString(INTENT_INDEX);
-        if (!TextUtils.isEmpty(intent)) {
-            favorite.intent = intent;
+        String intentDescription = c.getString(INTENT_INDEX);
+        if (!TextUtils.isEmpty(intentDescription)) {
+            try {
+                Intent intent = Intent.parseUri(intentDescription, 0);
+                intent.removeExtra(ItemInfo.EXTRA_PROFILE);
+                favorite.intent = intent.toUri(0);
+            } catch (URISyntaxException e) {
+                Log.e(TAG, "Invalid intent", e);
+           }
         }
         favorite.itemType = c.getInt(ITEM_TYPE_INDEX);
         if (favorite.itemType == Favorites.ITEM_TYPE_APPWIDGET) {
@@ -846,15 +865,25 @@ public class LauncherBackupHelper implements BackupHelper {
             values.put(Favorites.INTENT, favorite.intent);
         }
         values.put(Favorites.ITEM_TYPE, favorite.itemType);
+
+        UserHandleCompat myUserHandle = UserHandleCompat.myUserHandle();
+        long userSerialNumber =
+                UserManagerCompat.getInstance(mContext).getSerialNumberForUser(myUserHandle);
+        values.put(LauncherSettings.Favorites.PROFILE_ID, userSerialNumber);
+
         if (favorite.itemType == Favorites.ITEM_TYPE_APPWIDGET) {
             if (!TextUtils.isEmpty(favorite.appWidgetProvider)) {
                 values.put(Favorites.APPWIDGET_PROVIDER, favorite.appWidgetProvider);
             }
             values.put(Favorites.APPWIDGET_ID, favorite.appWidgetId);
+            values.put(LauncherSettings.Favorites.RESTORED,
+                    LauncherAppWidgetInfo.FLAG_ID_NOT_VALID |
+                    LauncherAppWidgetInfo.FLAG_PROVIDER_NOT_READY |
+                    LauncherAppWidgetInfo.FLAG_UI_NOT_READY);
+        } else {
+            // Let LauncherModel know we've been here.
+            values.put(LauncherSettings.Favorites.RESTORED, 1);
         }
-
-        // Let LauncherModel know we've been here.
-        values.put(LauncherSettings.Favorites.RESTORED, 1);
 
         return values;
     }
@@ -1149,6 +1178,11 @@ public class LauncherBackupHelper implements BackupHelper {
         }
 
         return true;
+    }
+
+    private String getUserSelectionArg() {
+        return Favorites.PROFILE_ID + '=' + UserManagerCompat.getInstance(mContext)
+                .getSerialNumberForUser(UserHandleCompat.myUserHandle());
     }
 
     private class KeyParsingException extends Throwable {

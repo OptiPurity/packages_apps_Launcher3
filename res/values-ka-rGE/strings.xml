@@ -24,6 +24,7 @@
     <string name="uid_name" msgid="7820867637514617527">"Android-ის ბირთვის აპები"</string>
     <string name="folder_name" msgid="7371454440695724752"></string>
     <string name="activity_not_found" msgid="8071924732094499514">"აპი არ არის დაყენებული."</string>
+    <string name="safemode_shortcut_error" msgid="9160126848219158407">"უსაფრთხო რეჟიმში ჩამოტვირთული აპი გაუქმებულია"</string>
     <string name="widgets_tab_label" msgid="2921133187116603919">"ვიჯეტები"</string>
     <string name="widget_adder" msgid="3201040140710381657">"ვიჯეტები"</string>
     <string name="toggle_weight_watcher" msgid="5645299835184636119">"Mem-ის ჩვენება"</string>
@@ -76,6 +77,7 @@
     <string name="permlab_write_settings" msgid="3574213698004620587">"მთავარი ეკრანის პარამეტრებისა და მალსახმობების ჩაწერა"</string>
     <string name="permdesc_write_settings" msgid="5440712911516509985">"აპისთვის მთავარი ეკრანის პარამეტრებისა და მალსახმობების შეცვლის უფლების მიცემა."</string>
     <string name="gadget_error_text" msgid="6081085226050792095">"პრობლემა ვიჯეტის ჩატვირთვისას"</string>
+    <string name="gadget_setup_text" msgid="8274003207686040488">"დაყენება"</string>
     <string name="uninstall_system_app_text" msgid="4172046090762920660">"ეს სისტემური აპია და მისი წაშლა შეუძლებელია."</string>
     <string name="dream_name" msgid="1530253749244328964">"ფეიერვერკი"</string>
     <string name="folder_hint_text" msgid="6617836969016293992">"უსახელო საქაღალდე"</string>
@@ -95,6 +97,9 @@
     <string name="migration_cling_use_default" msgid="2626475813981258626">"სტანდარტული განლაგება"</string>
     <string name="workspace_cling_title" msgid="5626202359865825661">"თქვენი სივრცის ორგანიზება"</string>
     <string name="workspace_cling_move_item" msgid="528201129978005352">"თუ გსურთ ფონების, ვიჯეტების და პარამეტრების მართვა, შეეხეთ და არ აუშვათ ფონს."</string>
+    <string name="workspace_cling_longpress_title" msgid="9173998993909018310">"ფონები, ვიჯეტები, &amp; პარამეტრები"</string>
+    <string name="workspace_cling_longpress_description" msgid="4119994475505235248">"მოსარგებად შეეხეთ &amp; დააყოვნეთ ფონზე"</string>
+    <string name="workspace_cling_longpress_dismiss" msgid="368660286867640874">"გასაგებია"</string>
     <string name="folder_cling_title" msgid="3894908818693254164">"აი, საქაღალდე"</string>
     <string name="folder_cling_create_folder" msgid="6158215559475836131">"ასეთის შესაქმნელად, შეეხეთ და დააყოვნეთ აპზე, ხოლო შემდეგ გადააჩოჩეთ შემდეგზე."</string>
     <string name="cling_dismiss" msgid="8962359497601507581">"კარგი"</string>
@@ -107,4 +112,14 @@
     <string name="widget_button_text" msgid="2880537293434387943">"ვიჯეტები"</string>
     <string name="wallpaper_button_text" msgid="8404103075899945851">"ფონები"</string>
     <string name="settings_button_text" msgid="8119458837558863227">"პარამეტრები"</string>
+    <string name="package_state_enqueued" msgid="6227252464303085641">"მოცდა..."</string>
+    <string name="package_state_downloading" msgid="4088770468458724721">"ჩამოტვირთვა..."</string>
+    <string name="package_state_installing" msgid="7588193972189849870">"ინსტალაცია..."</string>
+    <string name="package_state_unknown" msgid="7592128424511031410">"უცნობი"</string>
+    <string name="package_state_error" msgid="7672093962724223588">"არ აღდგა"</string>
+    <string name="abandoned_clean_all" msgid="5256770727689657618">"ყველას ამოშლა"</string>
+    <string name="abandoned_clean_this" msgid="7610119707847920412">"ამოშლა"</string>
+    <string name="abandoned_search" msgid="891119232568284442">"ძიება"</string>
+    <string name="abandoned_promises_title" msgid="7096178467971716750">"ეს აპი დაყენებული არ არის"</string>
+    <string name="abandoned_promise_explanation" msgid="3990027586878167529">"ამ ხატულის აპი დაყენებული არ არის. შეგიძლიათ ამოშალოთ, ან მოიძიოთ აპი და ხელით მოახდინოთ მისი ინსტალაცია."</string>
 </resources>

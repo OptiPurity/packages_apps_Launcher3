@@ -24,6 +24,7 @@
     <string name="uid_name" msgid="7820867637514617527">"Android 核心應用程式"</string>
     <string name="folder_name" msgid="7371454440695724752"></string>
     <string name="activity_not_found" msgid="8071924732094499514">"尚未安裝應用程式。"</string>
+    <string name="safemode_shortcut_error" msgid="9160126848219158407">"在安全模式中無法使用「已下載的應用程式」功能"</string>
     <string name="widgets_tab_label" msgid="2921133187116603919">"小工具"</string>
     <string name="widget_adder" msgid="3201040140710381657">"小工具"</string>
     <string name="toggle_weight_watcher" msgid="5645299835184636119">"顯示記憶體"</string>
@@ -68,14 +69,15 @@
     <string name="cab_folder_selection_text" msgid="7999992513806132118">"已選取 1 個資料夾"</string>
     <string name="cab_shortcut_selection_text" msgid="2103811025667946450">"已選取 1 個捷徑"</string>
     <string name="permlab_install_shortcut" msgid="5632423390354674437">"安裝捷徑"</string>
-    <string name="permdesc_install_shortcut" msgid="923466509822011139">"允許應用程式無需用戶許可也可新增捷徑。"</string>
+    <string name="permdesc_install_shortcut" msgid="923466509822011139">"允許應用程式無需使用者許可也可新增捷徑。"</string>
     <string name="permlab_uninstall_shortcut" msgid="864595034498083837">"解除安裝捷徑"</string>
-    <string name="permdesc_uninstall_shortcut" msgid="5134129545001836849">"允許應用程式無需用戶許可也可移除捷徑。"</string>
+    <string name="permdesc_uninstall_shortcut" msgid="5134129545001836849">"允許應用程式無需使用者許可也可移除捷徑。"</string>
     <string name="permlab_read_settings" msgid="1941457408239617576">"讀取主畫面的設定和捷徑"</string>
     <string name="permdesc_read_settings" msgid="5833423719057558387">"允許應用程式讀取主畫面中的設定和捷徑。"</string>
     <string name="permlab_write_settings" msgid="3574213698004620587">"寫入主畫面的設定和捷徑"</string>
     <string name="permdesc_write_settings" msgid="5440712911516509985">"允許應用程式更改主畫面中的設定和捷徑。"</string>
     <string name="gadget_error_text" msgid="6081085226050792095">"載入小工具時發生問題"</string>
+    <string name="gadget_setup_text" msgid="8274003207686040488">"設定"</string>
     <string name="uninstall_system_app_text" msgid="4172046090762920660">"這是系統應用程式，無法將其解除安裝。"</string>
     <string name="dream_name" msgid="1530253749244328964">"Rocket Launcher"</string>
     <string name="folder_hint_text" msgid="6617836969016293992">"未命名的資料夾"</string>
@@ -95,6 +97,9 @@
     <string name="migration_cling_use_default" msgid="2626475813981258626">"重新開始"</string>
     <string name="workspace_cling_title" msgid="5626202359865825661">"管理您的空間"</string>
     <string name="workspace_cling_move_item" msgid="528201129978005352">"輕觸並按住背景，即可管理桌布、小工具和設定。"</string>
+    <string name="workspace_cling_longpress_title" msgid="9173998993909018310">"桌布、小工具和設定"</string>
+    <string name="workspace_cling_longpress_description" msgid="4119994475505235248">"輕觸並按住背景即可自訂"</string>
+    <string name="workspace_cling_longpress_dismiss" msgid="368660286867640874">"知道了"</string>
     <string name="folder_cling_title" msgid="3894908818693254164">"資料夾顯示如下"</string>
     <string name="folder_cling_create_folder" msgid="6158215559475836131">"如要建立類似的資料夾，請輕觸並按住某個應用程式，然後疊到另一個應用程式之上。"</string>
     <string name="cling_dismiss" msgid="8962359497601507581">"確定"</string>
@@ -107,4 +112,14 @@
     <string name="widget_button_text" msgid="2880537293434387943">"小工具"</string>
     <string name="wallpaper_button_text" msgid="8404103075899945851">"桌布"</string>
     <string name="settings_button_text" msgid="8119458837558863227">"設定"</string>
+    <string name="package_state_enqueued" msgid="6227252464303085641">"等候中"</string>
+    <string name="package_state_downloading" msgid="4088770468458724721">"下載中"</string>
+    <string name="package_state_installing" msgid="7588193972189849870">"安裝中"</string>
+    <string name="package_state_unknown" msgid="7592128424511031410">"不明"</string>
+    <string name="package_state_error" msgid="7672093962724223588">"無法還原"</string>
+    <string name="abandoned_clean_all" msgid="5256770727689657618">"全部移除"</string>
+    <string name="abandoned_clean_this" msgid="7610119707847920412">"移除"</string>
+    <string name="abandoned_search" msgid="891119232568284442">"搜尋"</string>
+    <string name="abandoned_promises_title" msgid="7096178467971716750">"尚未安裝這個應用程式"</string>
+    <string name="abandoned_promise_explanation" msgid="3990027586878167529">"您尚未安裝這個圖示代表的應用程式。您可以移除這個圖示，也可以搜尋該應用程式並手動安裝。"</string>
 </resources>

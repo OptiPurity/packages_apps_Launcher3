@@ -30,8 +30,6 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Point;
-import android.graphics.PorterDuff;
-import android.graphics.PorterDuffXfermode;
 import android.graphics.Rect;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
@@ -73,11 +71,8 @@ public class CellLayout extends ViewGroup {
     private int mWidthGap;
     private int mHeightGap;
     private int mMaxGap;
-    private boolean mScrollingTransformsDirty = false;
     private boolean mDropPending = false;
-
-    private final Rect mRect = new Rect();
-    private final CellInfo mCellInfo = new CellInfo();
+    private boolean mIsDragTarget = true;
 
     // These are temporary variables to prevent having to allocate a new object just to
     // return an (x, y) value from helper functions. Do NOT use them to maintain other state.
@@ -128,7 +123,7 @@ public class CellLayout extends ViewGroup {
     private int mDragOutlineCurrent = 0;
     private final Paint mDragOutlinePaint = new Paint();
 
-    private BubbleTextView mPressedOrFocusedIcon;
+    private final FastBitmapView mTouchFeedbackView;
 
     private HashMap<CellLayout.LayoutParams, Animator> mReorderAnimators = new
             HashMap<CellLayout.LayoutParams, Animator>();
@@ -172,8 +167,6 @@ public class CellLayout extends ViewGroup {
 
     private Rect mTempRect = new Rect();
 
-    private final static PorterDuffXfermode sAddBlendMode =
-            new PorterDuffXfermode(PorterDuff.Mode.ADD);
     private final static Paint sPaint = new Paint();
 
     public CellLayout(Context context) {
@@ -295,6 +288,9 @@ public class CellLayout extends ViewGroup {
         mShortcutsAndWidgets.setCellDimensions(mCellWidth, mCellHeight, mWidthGap, mHeightGap,
                 mCountX, mCountY);
 
+        mTouchFeedbackView = new FastBitmapView(context);
+        // Make the feedback view large enough to hold the blur bitmap.
+        addView(mTouchFeedbackView, (int) (grid.cellWidthPx * 1.5), (int) (grid.cellHeightPx * 1.5));
         addView(mShortcutsAndWidgets);
     }
 
@@ -341,14 +337,6 @@ public class CellLayout extends ViewGroup {
         return mDropPending;
     }
 
-    private void invalidateBubbleTextView(BubbleTextView icon) {
-        final int padding = icon.getPressedOrFocusedBackgroundPadding();
-        invalidate(icon.getLeft() + getPaddingLeft() - padding,
-                icon.getTop() + getPaddingTop() - padding,
-                icon.getRight() + getPaddingLeft() + padding,
-                icon.getBottom() + getPaddingTop() + padding);
-    }
-
     void setOverScrollAmount(float r, boolean left) {
         if (left && mOverScrollForegroundDrawable != mOverScrollLeft) {
             mOverScrollForegroundDrawable = mOverScrollLeft;
@@ -362,24 +350,23 @@ public class CellLayout extends ViewGroup {
         invalidate();
     }
 
-    void setPressedOrFocusedIcon(BubbleTextView icon) {
-        // We draw the pressed or focused BubbleTextView's background in CellLayout because it
-        // requires an expanded clip rect (due to the glow's blur radius)
-        BubbleTextView oldIcon = mPressedOrFocusedIcon;
-        mPressedOrFocusedIcon = icon;
-        if (oldIcon != null) {
-            invalidateBubbleTextView(oldIcon);
-        }
-        if (mPressedOrFocusedIcon != null) {
-            invalidateBubbleTextView(mPressedOrFocusedIcon);
-        }
-    }
-
-    void setIsDragOverlapping(boolean isDragOverlapping) {
-        if (mIsDragOverlapping != isDragOverlapping) {
-            mIsDragOverlapping = isDragOverlapping;
-            setUseActiveGlowBackground(mIsDragOverlapping);
-            invalidate();
+    void setPressedIcon(BubbleTextView icon, Bitmap background, int padding) {
+        if (icon == null || background == null) {
+            mTouchFeedbackView.setBitmap(null);
+            mTouchFeedbackView.animate().cancel();
+        } else {
+            int offset = getMeasuredWidth() - getPaddingLeft() - getPaddingRight()
+                    - (mCountX * mCellWidth);
+            mTouchFeedbackView.setTranslationX(icon.getLeft() + (int) Math.ceil(offset / 2f)
+                    - padding);
+            mTouchFeedbackView.setTranslationY(icon.getTop() - padding);
+            if (mTouchFeedbackView.setBitmap(background)) {
+                mTouchFeedbackView.setAlpha(0);
+                mTouchFeedbackView.animate().alpha(1)
+                    .setDuration(FastBitmapDrawable.CLICK_FEEDBACK_DURATION)
+                    .setInterpolator(FastBitmapDrawable.CLICK_FEEDBACK_INTERPOLATOR)
+                    .start();
+            }
         }
     }
 
@@ -391,25 +378,24 @@ public class CellLayout extends ViewGroup {
         mDrawBackground = false;
     }
 
+    void disableDragTarget() {
+        mIsDragTarget = false;
+    }
+
+    boolean isDragTarget() {
+        return mIsDragTarget;
+    }
+
+    void setIsDragOverlapping(boolean isDragOverlapping) {
+        if (mIsDragOverlapping != isDragOverlapping) {
+            mIsDragOverlapping = isDragOverlapping;
+            setUseActiveGlowBackground(mIsDragOverlapping);
+            invalidate();
+        }
+    }
+
     boolean getIsDragOverlapping() {
         return mIsDragOverlapping;
-    }
-
-    protected void setOverscrollTransformsDirty(boolean dirty) {
-        mScrollingTransformsDirty = dirty;
-    }
-
-    protected void resetOverscrollTransforms() {
-        if (mScrollingTransformsDirty) {
-            setOverscrollTransformsDirty(false);
-            setTranslationX(0);
-            setRotationY(0);
-            // It doesn't matter if we pass true or false here, the important thing is that we
-            // pass 0, which results in the overscroll drawable not being drawn any more.
-            setOverScrollAmount(0, false);
-            setPivotX(getMeasuredWidth() / 2);
-            setPivotY(getMeasuredHeight() / 2);
-        }
     }
 
     @Override
@@ -444,23 +430,6 @@ public class CellLayout extends ViewGroup {
                 final Bitmap b = (Bitmap) mDragOutlineAnims[i].getTag();
                 paint.setAlpha((int)(alpha + .5f));
                 canvas.drawBitmap(b, null, mTempRect, paint);
-            }
-        }
-
-        // We draw the pressed or focused BubbleTextView's background in CellLayout because it
-        // requires an expanded clip rect (due to the glow's blur radius)
-        if (mPressedOrFocusedIcon != null) {
-            final int padding = mPressedOrFocusedIcon.getPressedOrFocusedBackgroundPadding();
-            final Bitmap b = mPressedOrFocusedIcon.getPressedOrFocusedBackground();
-            if (b != null) {
-                int offset = getMeasuredWidth() - getPaddingLeft() - getPaddingRight() -
-                        (mCountX * mCellWidth);
-                int left = getPaddingLeft() + (int) Math.ceil(offset / 2f);
-                int top = getPaddingTop();
-                canvas.drawBitmap(b,
-                        mPressedOrFocusedIcon.getLeft() + left - padding,
-                        mPressedOrFocusedIcon.getTop() + top - padding,
-                        null);
             }
         }
 
@@ -582,7 +551,15 @@ public class CellLayout extends ViewGroup {
     }
 
     public void restoreInstanceState(SparseArray<Parcelable> states) {
-        dispatchRestoreInstanceState(states);
+        try {
+            dispatchRestoreInstanceState(states);
+        } catch (IllegalArgumentException ex) {
+            if (LauncherAppState.isDogfoodBuild()) {
+                throw ex;
+            }
+            // Mismatched viewId / viewType preventing restore. Skip restore on production builds.
+            Log.e(TAG, "Ignoring an error while restoring a view instance state", ex);
+        }
     }
 
     @Override
@@ -699,101 +676,15 @@ public class CellLayout extends ViewGroup {
     }
 
     @Override
-    protected void onAttachedToWindow() {
-        super.onAttachedToWindow();
-        if (getParent() instanceof Workspace) {
-            Workspace workspace = (Workspace) getParent();
-            mCellInfo.screenId = workspace.getIdForScreen(this);
-        }
-    }
-
-    public void setTagToCellInfoForPoint(int touchX, int touchY) {
-        final CellInfo cellInfo = mCellInfo;
-        Rect frame = mRect;
-        final int x = touchX + getScrollX();
-        final int y = touchY + getScrollY();
-        final int count = mShortcutsAndWidgets.getChildCount();
-
-        boolean found = false;
-        for (int i = count - 1; i >= 0; i--) {
-            final View child = mShortcutsAndWidgets.getChildAt(i);
-            final LayoutParams lp = (LayoutParams) child.getLayoutParams();
-
-            if ((child.getVisibility() == VISIBLE || child.getAnimation() != null) &&
-                    lp.isLockedToGrid) {
-                child.getHitRect(frame);
-
-                float scale = child.getScaleX();
-                frame = new Rect(child.getLeft(), child.getTop(), child.getRight(),
-                        child.getBottom());
-                // The child hit rect is relative to the CellLayoutChildren parent, so we need to
-                // offset that by this CellLayout's padding to test an (x,y) point that is relative
-                // to this view.
-                frame.offset(getPaddingLeft(), getPaddingTop());
-                frame.inset((int) (frame.width() * (1f - scale) / 2),
-                        (int) (frame.height() * (1f - scale) / 2));
-
-                if (frame.contains(x, y)) {
-                    cellInfo.cell = child;
-                    cellInfo.cellX = lp.cellX;
-                    cellInfo.cellY = lp.cellY;
-                    cellInfo.spanX = lp.cellHSpan;
-                    cellInfo.spanY = lp.cellVSpan;
-                    found = true;
-                    break;
-                }
-            }
-        }
-
-        mLastDownOnOccupiedCell = found;
-
-        if (!found) {
-            final int cellXY[] = mTmpXY;
-            pointToCellExact(x, y, cellXY);
-
-            cellInfo.cell = null;
-            cellInfo.cellX = cellXY[0];
-            cellInfo.cellY = cellXY[1];
-            cellInfo.spanX = 1;
-            cellInfo.spanY = 1;
-        }
-        setTag(cellInfo);
-    }
-
-    @Override
     public boolean onInterceptTouchEvent(MotionEvent ev) {
         // First we clear the tag to ensure that on every touch down we start with a fresh slate,
         // even in the case where we return early. Not clearing here was causing bugs whereby on
         // long-press we'd end up picking up an item from a previous drag operation.
-        final int action = ev.getAction();
-
-        if (action == MotionEvent.ACTION_DOWN) {
-            clearTagCellInfo();
-        }
-
         if (mInterceptTouchListener != null && mInterceptTouchListener.onTouch(this, ev)) {
             return true;
         }
 
-        if (action == MotionEvent.ACTION_DOWN) {
-            setTagToCellInfoForPoint((int) ev.getX(), (int) ev.getY());
-        }
-
         return false;
-    }
-
-    private void clearTagCellInfo() {
-        final CellInfo cellInfo = mCellInfo;
-        cellInfo.cell = null;
-        cellInfo.cellX = -1;
-        cellInfo.cellY = -1;
-        cellInfo.spanX = 0;
-        cellInfo.spanY = 0;
-        setTag(cellInfo);
-    }
-
-    public CellInfo getTag() {
-        return (CellInfo) super.getTag();
     }
 
     /**
@@ -1049,6 +940,7 @@ public class CellLayout extends ViewGroup {
     }
 
     public void setBackgroundAlphaMultiplier(float multiplier) {
+
         if (mBackgroundAlphaMultiplier != multiplier) {
             mBackgroundAlphaMultiplier = multiplier;
             invalidate();
@@ -1067,17 +959,11 @@ public class CellLayout extends ViewGroup {
     }
 
     public void setShortcutAndWidgetAlpha(float alpha) {
-        final int childCount = getChildCount();
-        for (int i = 0; i < childCount; i++) {
-            getChildAt(i).setAlpha(alpha);
-        }
+        mShortcutsAndWidgets.setAlpha(alpha);
     }
 
     public ShortcutAndWidgetContainer getShortcutsAndWidgets() {
-        if (getChildCount() > 0) {
-            return (ShortcutAndWidgetContainer) getChildAt(0);
-        }
-        return null;
+        return mShortcutsAndWidgets;
     }
 
     public View getChildAt(int x, int y) {
@@ -3359,6 +3245,16 @@ out:            for (int i = x; i < x + spanX - 1 && x < xCount; i++) {
         int spanY;
         long screenId;
         long container;
+
+        CellInfo(View v, ItemInfo info) {
+            cell = v;
+            cellX = info.cellX;
+            cellY = info.cellY;
+            spanX = info.spanX;
+            spanY = info.spanY;
+            screenId = info.screenId;
+            container = info.container;
+        }
 
         @Override
         public String toString() {

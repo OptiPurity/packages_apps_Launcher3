@@ -30,6 +30,9 @@ import android.graphics.PointF;
 import android.graphics.Rect;
 import android.graphics.drawable.TransitionDrawable;
 import android.os.AsyncTask;
+import android.os.Build;
+import android.os.Bundle;
+import android.os.UserManager;
 import android.util.AttributeSet;
 import android.view.View;
 import android.view.ViewConfiguration;
@@ -37,6 +40,9 @@ import android.view.ViewGroup;
 import android.view.animation.AnimationUtils;
 import android.view.animation.DecelerateInterpolator;
 import android.view.animation.LinearInterpolator;
+
+import com.android.launcher3.compat.LauncherAppsCompat;
+import com.android.launcher3.compat.UserHandleCompat;
 
 import java.util.List;
 import java.util.Set;
@@ -125,11 +131,15 @@ public class DeleteDropTarget extends ButtonDropTarget {
     }
 
     private void setHoverColor() {
-        mCurrentDrawable.startTransition(mTransitionDuration);
+        if (mCurrentDrawable != null) {
+            mCurrentDrawable.startTransition(mTransitionDuration);
+        }
         setTextColor(mHoverColor);
     }
     private void resetHoverColor() {
-        mCurrentDrawable.resetTransition();
+        if (mCurrentDrawable != null) {
+            mCurrentDrawable.resetTransition();
+        }
         setTextColor(mOriginalTextColor);
     }
 
@@ -184,6 +194,17 @@ public class DeleteDropTarget extends ButtonDropTarget {
         if (!willAcceptDrop(info) || isAllAppsWidget(source, info)) {
             isVisible = false;
         }
+        if (useUninstallLabel) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
+                UserManager userManager = (UserManager)
+                        getContext().getSystemService(Context.USER_SERVICE);
+                Bundle restrictions = userManager.getUserRestrictions();
+                if (restrictions.getBoolean(UserManager.DISALLOW_APPS_CONTROL, false)
+                        || restrictions.getBoolean(UserManager.DISALLOW_UNINSTALL_APPS, false)) {
+                    isVisible = false;
+                }
+            }
+        }
 
         if (useUninstallLabel) {
             setCompoundDrawablesRelativeWithIntrinsicBounds(mUninstallDrawable, null, null, null);
@@ -230,8 +251,11 @@ public class DeleteDropTarget extends ButtonDropTarget {
         final DragLayer dragLayer = mLauncher.getDragLayer();
         final Rect from = new Rect();
         dragLayer.getViewRectRelativeToSelf(d.dragView, from);
+
+        int width = mCurrentDrawable == null ? 0 : mCurrentDrawable.getIntrinsicWidth();
+        int height = mCurrentDrawable == null ? 0 : mCurrentDrawable.getIntrinsicHeight();
         final Rect to = getIconRect(d.dragView.getMeasuredWidth(), d.dragView.getMeasuredHeight(),
-                mCurrentDrawable.getIntrinsicWidth(), mCurrentDrawable.getIntrinsicHeight());
+                width, height);
         final float scale = (float) to.width() / from.width();
 
         mSearchDropTargetBar.deferOnDragEnd();
@@ -279,25 +303,24 @@ public class DeleteDropTarget extends ButtonDropTarget {
         if (isAllAppsApplication(d.dragSource, item)) {
             // Uninstall the application if it is being dragged from AppsCustomize
             AppInfo appInfo = (AppInfo) item;
-            mLauncher.startApplicationUninstallActivity(appInfo.componentName, appInfo.flags);
+            mLauncher.startApplicationUninstallActivity(appInfo.componentName, appInfo.flags,
+                    appInfo.user);
         } else if (isUninstallFromWorkspace(d)) {
             ShortcutInfo shortcut = (ShortcutInfo) item;
             if (shortcut.intent != null && shortcut.intent.getComponent() != null) {
                 final ComponentName componentName = shortcut.intent.getComponent();
                 final DragSource dragSource = d.dragSource;
-                int flags = AppInfo.initFlags(
-                    ShortcutInfo.getPackageInfo(getContext(), componentName.getPackageName()));
-                mWaitingForUninstall =
-                    mLauncher.startApplicationUninstallActivity(componentName, flags);
+                final UserHandleCompat user = shortcut.user;
+                mWaitingForUninstall = mLauncher.startApplicationUninstallActivity(
+                        componentName, shortcut.flags, user);
                 if (mWaitingForUninstall) {
                     final Runnable checkIfUninstallWasSuccess = new Runnable() {
                         @Override
                         public void run() {
                             mWaitingForUninstall = false;
                             String packageName = componentName.getPackageName();
-                            List<ResolveInfo> activities =
-                                    AllAppsList.findActivitiesForPackage(getContext(), packageName);
-                            boolean uninstallSuccessful = activities.size() == 0;
+                            boolean uninstallSuccessful = !AllAppsList.packageHasActivities(
+                                    getContext(), packageName, user);
                             if (dragSource instanceof Folder) {
                                 ((Folder) dragSource).
                                     onUninstallActivityReturned(uninstallSuccessful);
@@ -324,7 +347,7 @@ public class DeleteDropTarget extends ButtonDropTarget {
 
             final LauncherAppWidgetInfo launcherAppWidgetInfo = (LauncherAppWidgetInfo) item;
             final LauncherAppWidgetHost appWidgetHost = mLauncher.getAppWidgetHost();
-            if (appWidgetHost != null) {
+            if ((appWidgetHost != null) && launcherAppWidgetInfo.isWidgetIdValid()) {
                 // Deleting an app widget ID is a void call but writes to disk before returning
                 // to the caller...
                 new AsyncTask<Void, Void, Void>() {
@@ -353,8 +376,11 @@ public class DeleteDropTarget extends ButtonDropTarget {
      */
     private AnimatorUpdateListener createFlingToTrashAnimatorListener(final DragLayer dragLayer,
             DragObject d, PointF vel, ViewConfiguration config) {
+
+        int width = mCurrentDrawable == null ? 0 : mCurrentDrawable.getIntrinsicWidth();
+        int height = mCurrentDrawable == null ? 0 : mCurrentDrawable.getIntrinsicHeight();
         final Rect to = getIconRect(d.dragView.getMeasuredWidth(), d.dragView.getMeasuredHeight(),
-                mCurrentDrawable.getIntrinsicWidth(), mCurrentDrawable.getIntrinsicHeight());
+                width, height);
         final Rect from = new Rect();
         dragLayer.getViewRectRelativeToSelf(d.dragView, from);
 

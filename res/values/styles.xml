@@ -18,53 +18,6 @@
 -->
 
 <resources>
-    <style name="ClingButton">
-        <item name="android:layout_width">wrap_content</item>
-        <item name="android:layout_height">wrap_content</item>
-        <item name="android:paddingTop">15dp</item>
-        <item name="android:paddingBottom">15dp</item>
-        <item name="android:paddingLeft">50dp</item>
-        <item name="android:paddingRight">50dp</item>
-        <item name="android:text">@string/cling_dismiss</item>
-        <item name="android:textColor">#ffffff</item>
-        <item name="android:textStyle">bold</item>
-        <item name="android:textSize">16sp</item>
-        <item name="android:background">@drawable/cling_button_bg</item>
-    </style>
-    <style name="ClingTitleText">
-        <item name="android:layout_width">wrap_content</item>
-        <item name="android:layout_height">wrap_content</item>
-        <item name="android:layout_marginBottom">5dp</item>
-        <item name="android:textSize">@dimen/cling_title_text_size</item>
-        <item name="android:textColor">#ffffff</item>
-        <item name="android:fontFamily">sans-serif-condensed</item>
-    </style>
-    <style name="ClingText">
-        <item name="android:layout_width">wrap_content</item>
-        <item name="android:layout_height">wrap_content</item>
-        <item name="android:textSize">@dimen/cling_text_size</item>
-        <item name="android:textColor">#80000000</item>
-        <item name="android:lineSpacingMultiplier">1.1</item>
-    </style>
-    <style name="ClingAltTitleText">
-        <item name="android:layout_width">wrap_content</item>
-        <item name="android:layout_height">wrap_content</item>
-        <item name="android:textSize">@dimen/cling_alt_title_text_size</item>
-        <item name="android:textColor">#49C0EC</item>
-    </style>
-    <style name="ClingAltText">
-        <item name="android:layout_width">wrap_content</item>
-        <item name="android:layout_height">wrap_content</item>
-        <item name="android:textSize">@dimen/cling_alt_text_size</item>
-        <item name="android:textColor">#49C0EC</item>
-    </style>
-    <style name="ClingHintText">
-        <item name="android:layout_width">wrap_content</item>
-        <item name="android:layout_height">wrap_content</item>
-        <item name="android:textSize">@dimen/cling_hint_text_size</item>
-        <item name="android:textColor">#80ffffff</item>
-        <item name="android:fontFamily">sans-serif-condensed</item>
-    </style>
 
     <style name="WorkspaceIcon">
         <item name="android:layout_width">match_parent</item>
@@ -86,11 +39,19 @@
 
     <style name="WorkspaceIcon.AppsCustomize">
         <item name="android:background">@null</item>
-        <item name="android:textColor">@color/apps_customize_icon_text_color</item>
+        <item name="android:textColor">@color/quantum_panel_text_color</item>
         <item name="android:drawablePadding">@dimen/dynamic_grid_icon_drawable_padding</item>
-        <item name="android:shadowRadius">4.0</item>
-        <item name="android:shadowColor">#FF000000</item>
+        <item name="android:shadowRadius">0</item>
+        <item name="customShadows">false</item>
     </style>
+
+    <style name="WorkspaceIcon.Folder">
+        <item name="android:background">@null</item>
+        <item name="android:textColor">@color/quantum_panel_text_color</item>
+        <item name="android:shadowRadius">0</item>
+        <item name="customShadows">false</item>
+    </style>
+
     <style name="SearchDropTargetBar">
     </style>
     <style name="SearchButton">
@@ -146,11 +107,19 @@
         <item name="android:shadowRadius">2.0</item>
     </style>
 
+    <style name="PreloadIcon">
+        <item name="background">@drawable/virtual_preload</item>
+        <item name="indicatorSize">4dp</item>
+        <item name="ringOutset">4dp</item>
+    </style>
+
+    <style name="PreloadIcon.Folder">
+        <item name="background">@drawable/virtual_preload_folder</item>
+        <item name="indicatorSize">4dp</item>
+        <item name="ringOutset">4dp</item>
+    </style>
+
     <!-- Overridden in device overlays -->
-    <style name="CustomClingTitleText">
-    </style>
-    <style name="CustomClingText">
-    </style>
     <style name="PagedViewWidgetImageView">
         <item name="android:paddingLeft">@dimen/app_widget_preview_padding_left</item>
     </style>
